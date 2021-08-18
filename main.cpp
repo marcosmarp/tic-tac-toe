@@ -2,17 +2,31 @@
 #include <iostream>
 #include <windows.h>
 #include <limits>
+#include <conio.h>
 
+#define ARROW_UP 72
+#define ARROW_DOWN 80
+#define ARROW_LEFT 75
+#define ARROW_RIGHT 77
+#define ENTER_KEY 13
 
 int main(void) {
-  std::string user_input;
+  std::string ai_command;
   std::vector<Symbols> board(9, Symbols::kNone);
-  bool game_over = false;
+  bool game_over = false, game_mode;
   auto current_player = Players::kPlayer1;
+  game_mode = SelectAGameMode();
   while (game_over == false) {
     PrintMainBoard(board);
     PrintAvailableCommands(board);
-    AskUserForCommand(board, current_player);
+    if(game_mode == true) {
+      if(current_player == Players::kPlayer1) AskUserForCommand(board, current_player);
+      else {
+        ai_command = AICalculateBestMove(CalculateBestScore(board));
+        TranslateCommandIntoSymbol(ai_command, board, current_player);
+        std::cout << ai_command;
+      }
+    } else AskUserForCommand(board, current_player);
     game_over = CheckIfGameOver(board);
     ChangeCurrentPlayer(current_player);
   }
@@ -29,6 +43,50 @@ void WipeInput() {
   std::cin.clear();
   std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
   return;
+}
+
+bool SelectAGameMode() {
+  bool game_mode, last_item;
+  last_item = PrintGameModeMenuHighlighted(0);
+  while(_getch() != ENTER_KEY) {
+    switch(_getch()) {
+      case ARROW_DOWN: 
+        switch(last_item) {
+          case 0: 
+            last_item = PrintGameModeMenuHighlighted(1);
+            break;
+          case 1:
+            last_item = PrintGameModeMenuHighlighted(0);
+            break;
+        }
+        break;
+      case ARROW_UP: 
+        switch(last_item) {
+          case 0: 
+            last_item = PrintGameModeMenuHighlighted(1);
+            break;
+          case 1:
+            last_item = PrintGameModeMenuHighlighted(0);
+            break;
+        }
+        break;
+    }
+  }
+  return last_item;
+}
+
+bool PrintGameModeMenuHighlighted(bool option) {
+  system("CLS");
+  switch(option) {
+    case 0:
+      std::cout << "[Player VS Player]" << std::endl << std::endl;
+      std::cout << "Player VS Enviroment" << std::endl << std::endl;
+      return 0;
+    case 1:
+      std::cout << "Player vs Player" << std::endl << std::endl;
+      std::cout << "[Player VS Enviroment]" << std::endl << std::endl;
+      return 1;
+  }
 }
 
 void PrintMainBoard(const std::vector<Symbols>& board_positions) {
@@ -336,7 +394,7 @@ bool CheckHorizontalCombinations(const std::vector<Symbols>& board) {
 bool CheckVerticalCombinations(const std::vector<Symbols>& board) {
   if (board[0] == board[3] && board[3] == board[6] && board[0] != Symbols::kNone) return true;
   else if (board[1] == board[4] && board[4] == board[7] && board[1] != Symbols::kNone) return true;
-  else if (board[2] == board[5] && board[5] == board[9] && board[2] != Symbols::kNone) return true;
+  else if (board[2] == board[5] && board[5] == board[8] && board[2] != Symbols::kNone) return true;
   return false;
 }
 
@@ -388,4 +446,46 @@ void ShowWinner(const Players& winner) {
       break;
   }
   return;
+}
+
+std::vector<int> CalculateBestScore(const std::vector<Symbols>& board) {
+  std::vector<int> position_score(9, 0);
+  auto simulation_board = board;
+  for(int i = 0 ; i < 9 ; ++i) {
+    if (simulation_board[i] == Symbols::kNone) {
+      simulation_board[i] = Symbols::kCircle;
+      if (CheckIfGameOver(simulation_board)) {
+        if (!CheckForDraw(simulation_board)) ++position_score[i];
+      }
+      simulation_board[i] = Symbols::kCross;
+      if (CheckIfGameOver(simulation_board)) {
+        if (!CheckForDraw(simulation_board)) ++position_score[i];
+      }
+    } else --position_score[i];
+    simulation_board = board;
+  }
+  return position_score;
+}
+
+std::string AICalculateBestMove(const std::vector<int>& position_score) {
+  int i;
+  for (i = 0 ; i < 9 ; ++i) {
+    if (position_score[i] == 1) break;
+  }
+  if (i == 9) {
+    for(i = 0 ; i < 9 ; ++i) {
+      if (position_score[i] == 0) break;
+    }
+  }
+  switch(i) {
+    case 0: return "tl";
+    case 1: return "t";
+    case 2: return "tr";
+    case 3: return "l";
+    case 4: return "c";
+    case 5: return "r";
+    case 6: return "bl";
+    case 7: return "b";
+    case 8: return "br";
+  }
 }
